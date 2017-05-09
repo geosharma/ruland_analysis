@@ -10,9 +10,6 @@ import matplotlib.pyplot as plt
 # import operation system module os
 import os
 
-# import regex module
-import re
-
 # import curve fitting model
 from lmfit.models import GaussianModel, LinearModel
 
@@ -28,37 +25,16 @@ from lmfit.models import GaussianModel, LinearModel
 # LATEX installation is required for plotting.
 # Date: 01/28/2017
 
-# # Font settings
-# plt.rc(
-#        'font', **{'family': 'sans-serif', 'sans-serif': ['DejaVu Sans'],
-#                   # 'monospace': ['Computer Modern Typewriter']
-#                   }
-#         )
-
-# # set some parameters for this plot
-# params = {'axes.labelsize': 12,
-#           'font.size': 12,
-#           'legend.fontsize': 12,
-#           'xtick.labelsize': 12,
-#           'ytick.labelsize': 12,
-#           'mathtext.default': 'regular',
-#           'text.latex.preamble': [r'\usepackage{siunitx}',
-#                                   r'\usepackage{amsmath}'],
-#           'text.usetex': True,  # use Tex to render all fonts
-#           'axes.unicode_minus': True}
-
-# # update parameters
-# plt.rcParams.update(params)
-
 # path for the input polarimage file
 filepath = "../data/"
 
 # name of the polar image input file
 infilename = 'saxs_plrimg.txt'
 
-# the polar image file saved from SAXSGUI generally starts from
+# for SAXS the polar image file saved from SAXSGUI generally starts from
 # q = 0.00153, 0.00306, 0.00459, 0.00612.... 0.30289, 0.30442, 0.30595
 # Dq is approximately 0.00153
+# these will change for different q range
 
 # the step size of the azimuthal angle from the SAXSGUI is 2 degrees
 # starting from 0 degrees
@@ -66,11 +42,7 @@ azi_stepsize = 2.0
 n = int(360.0/azi_stepsize + 1.0)
 
 # the SAXSGUI extracts azimuthal scan values from 0 - 360 degs at 2 degs
-# interval. Choose the range of phi interval
-# the range of the y-axis azimuthal angle is 0 to 360, however the 2D
-# scattering pattern is symmetic therefore only part of the pattern can be
-# used for further analysis
-# the limits of the azimuthal angle for analysis
+# interval. Choose the range of azimuthal angle (phi) for analysis
 start_phi = 90
 end_phi = 270
 
@@ -84,13 +56,10 @@ end_qslice = 0.13
 # complete paths with filename for the simulated and measured data
 infile = filepath + infilename
 
-# output filename without the extension
+# output filenames
 outfilenamenoext = os.path.splitext(infilename)
 outfigname = outfilenamenoext[0] + '_gauss'
-
-# split the filename
-splitname = re.split('_', infilename)
-outfilename = splitname[0] + '_gauss_summary.txt'
+outfilename = outfilenamenoext[0] + '_gauss_summary.txt'
 print('Summary file: ', outfilename)
 
 # path for the plots folder
@@ -185,10 +154,8 @@ ax1.set_ylabel(r"$s\: B_{obs}$ $\left(\AA^{-1}\right)$")
 # array to store s and sB for later plotting
 pltvar = np.zeros((qnum, 2))
 
-# params.add('height', value=1.0, expr='0.3183099*amplitude/max(1.e-15, sigma)')
 # create the model class
 peak = GaussianModel()
-peak.set_param_hint('height', expr='0.3183099*amplitude/sigma')
 background = LinearModel()
 model = background + peak
 # background = LinearModel()
@@ -319,17 +286,17 @@ print('Intercept: ', intercept)
 xs = np.linspace(0, axxlim[1], 10, endpoint=True)
 ys = slope * xs + intercept
 
-# compute the value for Rudland's streak analysis
-# average longitudinal extension and misorientation
-
 # plot this best fit line on the figure too
 ax1.plot(xs, ys, ls='-')
 
-xdist = axxlim[1] - axxlim[0]
-ydist = axylim[1] - axylim[0]
+# compute the value for Rudland's streak analysis
+# average longitudinal extension and misorientation
 s_l = r"$\langle L \rangle = $ " + str(round((1.0/np.sqrt(intercept)), 2))\
     + r" $\AA$"
 s_bg = r"$B_g = $ " + str(round(np.degrees(np.sqrt(slope)), 2)) + r"$^o$"
+
+xdist = axxlim[1] - axxlim[0]
+ydist = axylim[1] - axylim[0]
 ax1.text(axxlim[0] + 0.1 * xdist, axylim[0] + 0.80 * ydist, s_l)
 ax1.text(axxlim[0] + 0.1 * xdist, axylim[0] + 0.73 * ydist, s_bg)
 ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
@@ -348,6 +315,6 @@ fig1.tight_layout(pad=0.25, w_pad=0.25, h_pad=0.25)
 fig2.tight_layout(pad=0.25, w_pad=0.25, h_pad=0.25)
 
 # save the file
-# fig1.savefig('../plots/' + outfigname + 'profiles', ext='png', dpi=300)
-# fig2.savefig("../plots/" + outfigname, ext="png", dpi=300)
-plt.show()
+fig1.savefig('../plots/' + outfigname + 'profiles', ext='png', dpi=300)
+fig2.savefig("../plots/" + outfigname, ext="png", dpi=300)
+# plt.show()
