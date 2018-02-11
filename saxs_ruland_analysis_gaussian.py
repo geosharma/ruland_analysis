@@ -34,6 +34,9 @@ plotpath = './plots/'
 # name of the polar image input file
 infilename = 'saxs_plrimg.txt'
 
+# ouput filename
+outfilename = "saxs"
+
 # for SAXS the polar image file saved from SAXSGUI generally starts from
 # q = 0.00153, 0.00306, 0.00459, 0.00612.... 0.30289, 0.30442, 0.30595
 # Dq is approximately 0.00153
@@ -60,9 +63,9 @@ end_qslice = 0.13
 infile = filepath + infilename
 
 # output filenames
-outfilenamenoext = os.path.splitext(infilename)
-outfigname = outfilenamenoext[0] + '_gauss'
-outfilename = outfilenamenoext[0] + '_gauss_summary.txt'
+
+outfigname = outfilename + '_gauss'
+outfilename = outfilename + '_gauss_summary.txt'
 print('Summary file: ', outfilename)
 
 # create plots folders if it does not exist
