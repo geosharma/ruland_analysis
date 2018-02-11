@@ -8,3 +8,4 @@ plots/
 !.gitignore
 !readme.md
 !*.py
+!LICENSE.md
