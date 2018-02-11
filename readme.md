@@ -16,4 +16,7 @@ should be saved as (x, y,z) triplets in SAXSGUI.
 + *start_phi*: start azimuthal angle for analysis
 + *end_phi*: end azimuthal angle for analysis
 + *start_qslice*: start q value for analysis
-+ *end_qslice*: end q value for analysis 
++ *end_qslice*: end q value for analysis
+
+
+Further information will be added at a later date

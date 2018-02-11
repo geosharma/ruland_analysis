@@ -10,31 +10,93 @@ import matplotlib.pyplot as plt
 # import operation system module os
 import os
 
+# import regex module
+import re
+
+# import cycler
+from cycler import cycler
+
 # import curve fitting model
-from lmfit.models import GaussianModel, LinearModel
+from lmfit.models import LorentzianModel, ConstantModel, LinearModel
+from lmfit import Parameters
 
 # Description: Read the polor image file from SAXSGUI and determine the
 # scattering domain size and orientation angle based on Ruland streak method.
 # Save the polar image in SAXSGUI as triplets .csv text file.
-# Fits Gaussian profile to the peaks with linear background.
+# The fits Lorentzian profile to the peaks.
 # The folder structure: Parent folder: samplename folder /,
 #                       Children folders: data, prog, plots
-# the data file should be in the data folder, this script file should be the
-# prog folder and the plot will be saved to the plots folder.
-# These can be changed in the script below if so desired.
-# LATEX installation is required for plotting.
+# the data file should be in the data folder, this script file is in the prog
+# folder and the plot will be saved to the plots folder. These can be changed
+# in the script below if so desired.
 # Date: 01/28/2017
+
+# Font settings
+plt.rc(
+       'font', **{'family': 'sans-serif', 'sans-serif': ['DejaVu Sans'],
+                  # 'monospace': ['Computer Modern Typewriter']
+                  }
+        )
+
+# set some parameters for this plot
+params = {'axes.labelsize': 12,
+          'font.size': 12,
+          'legend.fontsize': 12,
+          'xtick.labelsize': 12,
+          'ytick.labelsize': 12,
+          'mathtext.default': 'regular',
+          'text.latex.preamble': [r'\usepackage{siunitx}',
+                                  r'\usepackage{amsmath}'],
+          'text.usetex': True,  # use Tex to render all fonts
+          # 'figure.figsize': fig_size,
+          # set default color cycle
+          'axes.prop_cycle': cycler(
+                             'color', ['#332288', '#88CCEE', '#44AA99',
+                                       '#117733', '#999933', '#DDCC77',
+                                       '#CC6677', '#882255', '#AA4499']),
+          'axes.unicode_minus': True}
+
+# update parameters
+plt.rcParams.update(params)
+
+# Close all open figures
+plt.close('all')
+
+# custom colors from colorbrewer2.org
+colors01 = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00',
+            '#ffff33', '#a65628', '#f781bf']
+
+colors02 = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854',
+            '#ffd92f', '#e5c494', '#b3b3b3']
+
+colors03 = ['#ffd92f', '#b3b3b3']
+
+
+# lorentzian fit function
+def lorentzfit(x, c, p1, p2, p3):
+    "Fits a multi-parameter Lorentzian function to data"
+    return p1/((x - p2)**2 + p3) + c
+
+
+def lorentzian(x, amp, cen, wid):
+    "1-d lorentzian: lorentzian(x, amp, cen, wid)"
+    return amp/np.pi * (wid/((x - cen)**2 + wid**2))
+
+
+def line(x, slope, intercept):
+    "line"
+    return slope * x + intercept
+
 
 # path for the input polarimage file
 filepath = "../data/"
 
 # name of the polar image input file
-infilename = 'saxs_plrimg.txt'
+infilename = 'ttc1b_plrimg.txt'
 
-# for SAXS the polar image file saved from SAXSGUI generally starts from
-# q = 0.00153, 0.00306, 0.00459, 0.00612.... 0.30289, 0.30442, 0.30595
-# Dq is approximately 0.00153
-# these will change for different q range
+# the polar image file saved from SAXSGUI generally starts from
+# q = 0.00107, 0.00213, 0.00320, 0.00427.... 0.21113, 0.21220, 0.21326
+# Dq is approximately 0.00107
 
 # the step size of the azimuthal angle from the SAXSGUI is 2 degrees
 # starting from 0 degrees
@@ -42,7 +104,11 @@ azi_stepsize = 2.0
 n = int(360.0/azi_stepsize + 1.0)
 
 # the SAXSGUI extracts azimuthal scan values from 0 - 360 degs at 2 degs
-# interval. Choose the range of azimuthal angle (phi) for analysis
+# interval. Choose the range of phi interval
+# the range of the y-axis azimuthal angle is 0 to 360, however the 2D
+# scattering pattern is symmetic therefore only part of the pattern can be
+# used for further analysis
+# the limits of the azimuthal angle for analysis
 start_phi = 90
 end_phi = 270
 
@@ -50,16 +116,19 @@ end_phi = 270
 # only a few initial q values are used in the Ruland streak analysis
 # generally the q value ranges from 0.01 to 0.04 A^(-1)
 # initially start with 20 to 40 slices and adjust the values
-start_qslice = 0.065
-end_qslice = 0.13
+start_qslice = 0.0020
+end_qslice = 0.0100
 
 # complete paths with filename for the simulated and measured data
 infile = filepath + infilename
 
-# output filenames
+# output filename without the extension
 outfilenamenoext = os.path.splitext(infilename)
-outfigname = outfilenamenoext[0] + '_gauss'
-outfilename = outfilenamenoext[0] + '_gauss_summary.txt'
+outfigname = outfilenamenoext[0] + '_loren'
+
+# split the filename
+splitname = re.split('_', infilename)
+outfilename = splitname[0] + '_loren_summary_bgrm_temp.txt'
 print('Summary file: ', outfilename)
 
 # path for the plots folder
@@ -153,12 +222,14 @@ ax1.set_ylabel(r"$s\: B_{obs}$ $\left(\AA^{-1}\right)$")
 
 # array to store s and sB for later plotting
 pltvar = np.zeros((qnum, 2))
-
+print(np.shape(pltvar))
+# params.add('height', value=1.0, expr='0.3183099*amplitude/max(1.e-15, sigma)')
 # create the model class
-peak = GaussianModel()
-background = LinearModel()
-model = background + peak
+peak = LorentzianModel()
+peak.set_param_hint('height', expr='0.3183099*amplitude/sigma')
+background = ConstantModel()
 # background = LinearModel()
+
 
 # write the phi angle and intensity pair values for each q value in
 # a separate file for further analysis
@@ -188,6 +259,21 @@ for i in range(idx_qstart, idx_qend):
     phi = slc[:, 1]
     intI = slc[:, 2]
 
+    # using argpartition to get the indices of the three smallest values
+    # of intensity for linear baseline determination
+    # Requires NumPy version >= 1.8
+    # min_idx = np.argpartition(intI, 3)[:5]
+
+    # determine linear baseline and subtract the baseline
+    # p = np.polyfit(phi[min_idx], intI[min_idx], 1)
+    xbg = np.concatenate((phi[:3], phi[-3:]), axis=0)
+    ybg = np.concatenate((intI[:3], intI[-3:]), axis=0)
+    # generate a linear baseline
+    p = np.polyfit(xbg, ybg, 1)
+    # p = np.polyfit([phi[0], phi[-1]], [intI[0], intI[-1]], 1)
+    baseline = np.polyval(p, phi)
+    intI = intI
+    print('max = ', max(intI))
     # find the maximum intensity after correcting for baseline
     intI = intI.clip(min=0)
     maxI = np.amax(intI)
@@ -198,34 +284,47 @@ for i in range(idx_qstart, idx_qend):
     # find the angle for maximum intensity
     angle_maxI = phi[maxI_index]
 
-    # compute initial parameters and then create a model
-    # pars = background.make_params(c=intI.min())
-    pars = background.make_params(intercept=intI.min(), slope=0)
-    pars += peak.guess(intI, x=phi)
-    result = model.fit(intI, pars, x=phi)
-    calbkg = np.polyval([result.params['slope'],
-                         result.params['intercept']], phi)
+    # Normalized intensity
+    normI = intI/maxI
 
-    # print(result.fit_report(min_correl=0.5))
+    # define intial values
+    # p3 = ((np.amax(phi) - np.amin(phi))/10)**2
+    # p2 = (np.amax(phi) + np.amin(phi))/2.0
+    # p1 = np.amax(normI) * p3
+    # c = np.amin(normI)
+    # compute initial parameters and then create a model
+    pars = background.make_params(c=intI.min())
+    # pars = linmod.make_params(intercept=intI.min(), slope=0)
+    pars += peak.guess(intI, x=phi)
+    # mod = lmod + linmod
+    model = background + peak
+
+    # result = mod.fit(normI, pars, x=phi)
+    # curve fit Lorentzian to the azimuthal scan
+    # popt, pconv = curve_fit(lorentzfit, phi, normI, p0=[c, p1, p2, p3])
+    # print(popt)
+    # yfit = lorentzfit(phi, popt[0], popt[1], popt[2], popt[3])
+    result = model.fit(intI, pars, x=phi)
+    # result.params.add('height', expr='0.3183099*amplitude/max(1.e-15, sigma)')
+    print(result.fit_report(min_correl=0.5))
     # compute the integral breadth (Bobs)
-    intb = np.radians(np.sqrt(np.pi/np.log(2)) * result.params['fwhm'].value/2)
+    intb = np.radians(result.params['fwhm'].value) * np.pi/2
 
     # convert from q to s
     s = q/(2 * np.pi)
 
-    # compute x and y axis values for Gaussian fit
-    s2 = s**2
-    s2intb2 = s2 * intb**2
+    # compute sBobs
+    sintb = s * intb
 
     # save s and sB for plotting later
-    pltvar[lidx, 0] = s2
-    pltvar[lidx, 1] = s2intb2
+    pltvar[lidx, 0] = s
+    pltvar[lidx, 1] = sintb
 
     print('{0:8.5f}, {1:8.2f}, {2:7.2f}, {3:7.3f}, \
 {4:7.3f}, {5:7.3f}, {6:12.5f}, {7:10.5f}, {8:15.5f}'.format(
           q, angle_maxI, result.params['center'].value,
           result.params['fwhm'].value, result.params['amplitude'].value,
-          result.params['height'].value,
+          0.3183099 * result.params['amplitude']/max(1.e-15, result.params['sigma']),
           intb, result.chisqr, result.redchi), file=fout)
     # ax1.plot(phi, normI, lw=1.0, label='Scan')
     # ax1.plot(phi, yfit, lw=1.0, label='baseline')
@@ -233,26 +332,22 @@ for i in range(idx_qstart, idx_qend):
     if lidx in figidx:
         axidx = figidx.index(lidx)
         # print('Axis index: ', axidx)
-        axs[axidx].plot(phi, intI, 'o')
-        axs[axidx].plot(phi, result.best_fit, lw=1.5)
-        axs[axidx].plot(phi, calbkg)
-        # axs[axidx].set_ylim(-500, )
+        axs[axidx].plot(phi, intI, 'bo', mec='k', mfc=colors02[0])
+        axs[axidx].plot(phi, result.best_fit, lw=1.5, color=colors02[1])
+        axs[axidx].set_ylim(0, )
         axs[axidx].set_xlim(start_phi, end_phi)
         axs[axidx].set_xlabel(r"$\phi$ ($^o$)", fontsize=16)
         axs[axidx].set_ylabel(r"$I/I_{max}$", fontsize=16)
         axs[axidx].set_title(r"q = " + str(q))
         txtfwhm = 'fwhm = ' + str(round(result.params['fwhm'].value, 2))
-        aylim = axs[axidx].get_ylim()
-        axlim = axs[axidx].get_xlim()
-        xtextloc = axlim[0] + 0.075 * (axlim[1] - axlim[0])
-        ytextloc = aylim[0] + 0.80 * (aylim[1] - aylim[0])
-        axs[axidx].text(xtextloc, ytextloc, txtfwhm)
+        # axs[axidx].text(100, 0.8, txtfwhm)
 
 # extract s and s*B
 s = pltvar[:, 0]
 sintb = pltvar[:, 1]
 
-ax1.plot(s, sintb, ls='', marker='s', label='Data')
+ax1.plot(s, sintb, ls='', marker='s', mec='k', mfc=colors02[0],
+         label='Data')
 # fit a linear line to the data
 p = np.polyfit(s, sintb, 1)
 
@@ -263,15 +358,15 @@ ax1.set_xlim(0,)
 ax1.set_ylim(0,)
 axxlim = ax1.get_xlim()
 axylim = ax1.get_ylim()
-ax1.set_xlabel(r"$s^2$ $\left(\AA^{-2}\right)$")
-ax1.set_ylabel(r"$s^2\: B_{obs}^2$ $\left(\AA^{-2}\right)$")
+ax1.set_xlabel(r"$s$ $\left(\AA^{-1}\right)$")
+ax1.set_ylabel(r"$s\: B_{obs}$ $\left(\AA^{-1}\right)$")
 
 # for the seconday x-axis showing corresponding values of q
 ax2 = ax1.twiny()
 ax2.set_xlim(ax1.get_xlim())
 # print(ax1.get_xticks())
-ax2labels = np.sqrt(ax1.get_xticks()) * 2 * np.pi
-ax2labels = np.round(ax2labels, 2)
+ax2labels = ax1.get_xticks() * 2 * np.pi
+ax2labels = np.round(ax2labels, 3)
 # print(ax2labels)
 # ax2.set_xticks(ax2tickpos)
 ax2.set_xticklabels(ax2labels)
@@ -286,27 +381,19 @@ print('Intercept: ', intercept)
 xs = np.linspace(0, axxlim[1], 10, endpoint=True)
 ys = slope * xs + intercept
 
-# plot this best fit line on the figure too
-ax1.plot(xs, ys, ls='-')
-
 # compute the value for Rudland's streak analysis
 # average longitudinal extension and misorientation
-s_l = r"$\langle L \rangle = $ " + str(round((1.0/np.sqrt(intercept)), 2))\
-    + r" $\AA$"
-s_bg = r"$B_g = $ " + str(round(np.degrees(np.sqrt(slope)), 2)) + r"$^o$"
+
+# plot this best fit line on the figure too
+ax1.plot(xs, ys, ls='-', color=colors02[1])
 
 xdist = axxlim[1] - axxlim[0]
 ydist = axylim[1] - axylim[0]
+s_l = r"$\langle L \rangle = $ " + str(round((1.0/intercept), 2))\
+    + r" $\AA$"
+s_bg = r"$B_g = $ " + str(round(np.degrees(slope), 2)) + r"$^o$"
 ax1.text(axxlim[0] + 0.1 * xdist, axylim[0] + 0.80 * ydist, s_l)
 ax1.text(axxlim[0] + 0.1 * xdist, axylim[0] + 0.73 * ydist, s_bg)
-ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-ax1.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-
-# move the exponent of the y-axis ticklabels towards the left of the
-# of the y-axis
-expoffset = ax1.yaxis.get_offset_text()
-expoffset.set_x(-0.10)
-# ax2.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 # handles, labels = ax1.get_legend_handles_labels()
 # ax1.legend(handles, labels, frameon=False)
 
@@ -314,7 +401,8 @@ expoffset.set_x(-0.10)
 fig1.tight_layout(pad=0.25, w_pad=0.25, h_pad=0.25)
 fig2.tight_layout(pad=0.25, w_pad=0.25, h_pad=0.25)
 
+
 # save the file
 fig1.savefig('../plots/' + outfigname + 'profiles', ext='png', dpi=300)
 fig2.savefig("../plots/" + outfigname, ext="png", dpi=300)
-# plt.show()
+plt.show()
