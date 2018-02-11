@@ -18,7 +18,6 @@ from cycler import cycler
 
 # import curve fitting model
 from lmfit.models import LorentzianModel, ConstantModel, LinearModel
-from lmfit import Parameters
 
 # Description: Read the polor image file from SAXSGUI and determine the
 # scattering domain size and orientation angle based on Ruland streak method.
@@ -89,10 +88,16 @@ def line(x, slope, intercept):
 
 
 # path for the input polarimage file
-filepath = "../data/"
+filepath = "./data/"
+
+# path for the plots folder
+plotpath = './plots/'
 
 # name of the polar image input file
-infilename = 'ttc1b_plrimg.txt'
+infilename = 'saxs_plrimg.txt'
+
+# name of the output file
+outfilename = "saxs"
 
 # the polar image file saved from SAXSGUI generally starts from
 # q = 0.00107, 0.00213, 0.00320, 0.00427.... 0.21113, 0.21220, 0.21326
@@ -116,23 +121,16 @@ end_phi = 270
 # only a few initial q values are used in the Ruland streak analysis
 # generally the q value ranges from 0.01 to 0.04 A^(-1)
 # initially start with 20 to 40 slices and adjust the values
-start_qslice = 0.0020
-end_qslice = 0.0100
+start_qslice = 0.065
+end_qslice = 0.13
 
 # complete paths with filename for the simulated and measured data
 infile = filepath + infilename
 
 # output filename without the extension
-outfilenamenoext = os.path.splitext(infilename)
-outfigname = outfilenamenoext[0] + '_loren'
-
-# split the filename
-splitname = re.split('_', infilename)
-outfilename = splitname[0] + '_loren_summary_bgrm_temp.txt'
+outfigname = outfilename + '_loren'
+outfilename = outfilename + '_loren_summary.txt'
 print('Summary file: ', outfilename)
-
-# path for the plots folder
-plotpath = '../plots/'
 
 # create plots folders if it does not exist
 if not os.path.exists(plotpath):
@@ -140,7 +138,7 @@ if not os.path.exists(plotpath):
 
 # write the output to a text file
 # table headers
-fout = open("../plots/" + outfilename, 'w')
+fout = open(plotpath + outfilename, 'w')
 print('{0:9s} {1:30s}'.format('Sample: ', infilename), file=fout)
 print('{0:>8s}, {1:>8s}, {2:>7s}, {3:>7s}, {4:>7s}, {5:>7s},\
  {6:>12s}, {7:>10s}, {8:>15s}'.format(
@@ -403,6 +401,6 @@ fig2.tight_layout(pad=0.25, w_pad=0.25, h_pad=0.25)
 
 
 # save the file
-fig1.savefig('../plots/' + outfigname + 'profiles', ext='png', dpi=300)
-fig2.savefig("../plots/" + outfigname, ext="png", dpi=300)
+fig1.savefig(plotpath + outfigname + 'profiles', ext='png', dpi=300)
+fig2.savefig(plotpath + outfigname, ext="png", dpi=300)
 plt.show()
