@@ -1,9 +1,6 @@
 # Blacklist files/folder in the same directory as .gitignore
 /*
 
-# Ignore the plots folder
-plots/
-
 # Whitelist some files
 !.gitignore
 !readme.md
