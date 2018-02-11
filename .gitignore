@@ -9,3 +9,6 @@ plots/
 !readme.md
 !*.py
 !LICENSE.md
+
+# Whitelist data folder
+!data/
